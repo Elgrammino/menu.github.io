@@ -1,11 +1,11 @@
 const CACHE_NAME = "menu-v1";
 
 const ASSETS = [
-  "./",
-  "./menus.html",
-  "./logo_menu.png",
-  "./apple-touch-icon.png",
-  "./manifest.json"
+  "/menu.github.io/",
+  "/menu.github.io/menus.html",
+  "/menu.github.io/logo_menu.png",
+  "/menu.github.io/apple-touch-icon.png",
+  "/menu.github.io/manifest.json"
 ];
 
 self.addEventListener("install", event => {
