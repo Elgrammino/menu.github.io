@@ -1,7 +1,7 @@
 {
   "name": "Меню",
   "short_name": "Меню",
-  "start_url": "./menus.html",
+  "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
   "background_color": "#121212",
