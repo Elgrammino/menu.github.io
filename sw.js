@@ -2,7 +2,7 @@ const CACHE_NAME = "menu-v1";
 
 const ASSETS = [
   "/menu.github.io/",
-  "/menu.github.io/menus.html",
+  "/menu.github.io/index.html",
   "/menu.github.io/logo_menu.png",
   "/menu.github.io/apple-touch-icon.png",
   "/menu.github.io/manifest.json"
