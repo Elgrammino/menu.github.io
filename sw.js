@@ -1,6 +1,6 @@
 // При каждом изменении index.html/картинок меняйте номер версии,
 // иначе у пользователей останется старая версия из кэша.
-const CACHE_NAME = "menu-v4";
+const CACHE_NAME = "menu-v7";
 
 // Пути относительные (от расположения sw.js), поэтому один и тот же
 // файл работает и в /menu.github.io/, и в /Menubeta.github.io/
@@ -9,7 +9,11 @@ const ASSETS = [
   "./index.html",
   "./logo_menu.png",
   "./apple-touch-icon.png",
-  "./manifest.json"
+  "./manifest.json",
+  "./manrope-medium.woff2",
+  "./manrope-semibold.woff2",
+  "./manrope-bold.woff2",
+  "./unbounded-semibold.woff2"
 ];
 
 self.addEventListener("install", event => {
