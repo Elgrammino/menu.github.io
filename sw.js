@@ -1,11 +1,15 @@
-const CACHE_NAME = "menu-v1";
+// При каждом изменении index.html/картинок меняйте номер версии,
+// иначе у пользователей останется старая версия из кэша.
+const CACHE_NAME = "menu-v4";
 
+// Пути относительные (от расположения sw.js), поэтому один и тот же
+// файл работает и в /menu.github.io/, и в /Menubeta.github.io/
 const ASSETS = [
-  "/menu.github.io/",
-  "/menu.github.io/index.html",
-  "/menu.github.io/logo_menu.png",
-  "/menu.github.io/apple-touch-icon.png",
-  "/menu.github.io/manifest.json"
+  "./",
+  "./index.html",
+  "./logo_menu.png",
+  "./apple-touch-icon.png",
+  "./manifest.json"
 ];
 
 self.addEventListener("install", event => {
@@ -18,13 +22,18 @@ self.addEventListener("install", event => {
 
 self.addEventListener("activate", event => {
   event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys
-          .filter(key => key !== CACHE_NAME)
-          .map(key => caches.delete(key))
-      )
-    ).then(() => self.clients.claim())
+    Promise.all([
+      caches.keys().then(keys =>
+        Promise.all(
+          keys.map(key => {
+            if (key !== CACHE_NAME) {
+              return caches.delete(key);
+            }
+          })
+        )
+      ),
+      self.clients.claim()
+    ])
   );
 });
 
@@ -37,11 +46,14 @@ self.addEventListener("fetch", event => {
         return (
           cached ||
           fetch(event.request).then(response => {
-            const copy = response.clone();
+            // Кэшируем только успешные ответы (не 404/ошибки)
+            if (response.ok) {
+              const copy = response.clone();
 
-            caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, copy);
-            });
+              caches.open(CACHE_NAME).then(cache => {
+                cache.put(event.request, copy);
+              });
+            }
 
             return response;
           })

@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
 <title>Меню</title>
 
 <link rel="manifest" href="manifest.json">
@@ -32,7 +32,11 @@
 body {
     font-family: sans-serif;
     margin: 0;
-    padding: 10px;
+    padding:
+        calc(env(safe-area-inset-top) + 10px)
+        10px
+        calc(env(safe-area-inset-bottom) + 10px)
+        10px;
     background: #121212;
     color: #fff;
     overflow-x: hidden;
@@ -138,6 +142,117 @@ canvas { display:none; }
   #preview img{ width:240px; }
   #participantInput { font-size:16px; }
 }
+/* ===== Блок «Время на чеке» ===== */
+#timeCard{
+  background:#1E1E1E;
+  border-radius:14px;
+  padding:14px 14px 12px;
+  margin-top:14px;
+}
+
+#timeCardHead{
+  display:flex;
+  align-items:baseline;
+  justify-content:space-between;
+  margin-bottom:10px;
+}
+
+#timeLabel{
+  font-size:13px;
+  color:#9a9a9a;
+  letter-spacing:.02em;
+}
+
+#timeBadge{
+  font-size:13px;
+  color:#F77E2D;
+  font-weight:600;
+  min-width:52px;
+  text-align:right;
+}
+
+#timeClock{
+  font-family:"SF Mono", "Menlo", monospace;
+  font-variant-numeric: tabular-nums;
+  font-size:34px;
+  font-weight:600;
+  text-align:center;
+  letter-spacing:.02em;
+  margin-bottom:12px;
+}
+
+#chipRow{
+  display:flex;
+  gap:6px;
+  justify-content:space-between;
+}
+
+.chip{
+  flex:1;
+  background:#2b2b2b;
+  color:#fff;
+  border:none;
+  padding:10px 0;
+  border-radius:10px;
+  font-size:14px;
+  font-weight:500;
+  cursor:pointer;
+  transition:transform .12s ease, background .12s ease;
+}
+.chip:active{ transform:scale(0.92); }
+.chip.now{
+  background:transparent;
+  border:1px solid #3a3a3a;
+  color:#bbb;
+  font-size:12px;
+  flex:1.3;
+}
+.chip.now.is-live{
+  border-color:#F77E2D;
+  color:#F77E2D;
+}
+
+#manualRow{
+  display:flex;
+  gap:8px;
+  margin-top:10px;
+}
+
+#customOffset{
+  flex:1;
+  background:#2b2b2b;
+  color:#fff;
+  border:none;
+  border-radius:10px;
+  padding:9px 10px;
+  font-size:14px;
+  text-align:center;
+}
+#customOffset::placeholder{ color:#777; }
+
+#applyCustom{
+  background:#2b2b2b;
+  color:#F77E2D;
+  border:none;
+  border-radius:10px;
+  padding:9px 16px;
+  font-size:14px;
+  font-weight:600;
+  cursor:pointer;
+}
+#applyCustom:active{ transform:scale(0.94); }
+    /* Запрет масштабирования и выделения */
+html,
+body{
+    touch-action: manipulation;
+    overscroll-behavior: none;
+    -webkit-user-select: none;
+    user-select: none;
+}
+
+*{
+    -webkit-tap-highlight-color: transparent;
+}
 </style>
 
 </head>
@@ -159,6 +274,28 @@ canvas { display:none; }
 <h2 id="title"></h2>
 <div class="list-container" id="list"></div>
 <button class="main" onclick="generateReceipt()">Сгенерировать чек</button>
+  <div id="timeCard">
+  <div id="timeCardHead">
+    <span id="timeLabel">🕒 Время на чеке</span>
+    <span id="timeBadge">Сейчас</span>
+  </div>
+
+  <div id="timeClock">--:--</div>
+
+  <div id="chipRow">
+    <button class="chip" data-delta="-15">-15</button>
+    <button class="chip" data-delta="-5">-5</button>
+    <button class="chip now" id="timeNow">Сейчас</button>
+    <button class="chip" data-delta="5">+5</button>
+    <button class="chip" data-delta="15">+15</button>
+  </div>
+
+  <div id="manualRow">
+    <input id="customOffset" type="text" placeholder="Своё смещение, напр. -20">
+    <button id="applyCustom">OK</button>
+  </div>
+
+</div>
 <button class="main" id="resetBtn" onclick="resetPage()">Сброс</button>
 
 <div id="preview"></div>
@@ -383,7 +520,7 @@ function renderReceiptToCanvas({ download = false } = {}) {
   for(let i = 0; i < emptyLines; i++) y += lineHeight;
 
   // футер
-  const now = new Date();
+ const now = getOffsetTime();
   ctx.textAlign = "center";
   ctx.font = "16px sans-serif";
   ctx.fillText(`${now.toLocaleDateString()} ${now.toLocaleTimeString()}`, width / 2, y + 10);
@@ -477,7 +614,7 @@ function copyToClipboard(){
   let text = "Сок\n\n";
   selectedWords.forEach(w => { text += (fullNames[w] || w) + " " + (prices[w] ?? 0) + "₽\n"; });
   text += `\nСпасибо за участие\n${(participant || "").toUpperCase()}`;
-  navigator.clipboard.writeText(text);
+  if (navigator.clipboard) navigator.clipboard.writeText(text).catch(() => {});
 }
 
 function goBack() {
@@ -513,18 +650,13 @@ function generateReceipt(){
   renderReceiptToCanvas({ download: true });
 }
 
-// ===== Старт =====
-renderPage("Закуски");
-// первоначальное превью (сработает даже если лого ещё грузится)
-updateReceiptPreview();
+// ===== Инициализация запускается в самом конце файла =====
+// (после того как определены getOffsetTime/timeOffset, см. ниже)
 
-</script>
-
-<script>
 if ("serviceWorker" in navigator) {
   window.addEventListener("load", async () => {
     try {
-      const registration = await navigator.serviceWorker.register("/menu.github.io/sw.js");
+      const registration = await navigator.serviceWorker.register("./sw.js");
 
       registration.addEventListener("updatefound", () => {
         const worker = registration.installing;
@@ -546,6 +678,96 @@ if ("serviceWorker" in navigator) {
     }
   });
 }
+let timeOffset = parseInt(localStorage.getItem("timeOffset") || "0", 10);
+if (!Number.isFinite(timeOffset)) timeOffset = 0;
+
+// ===== ПРИМЕНЕНИЕ СМЕЩЕНИЯ В ЧЕК =====
+// Единый источник правды: timeOffset (минуты, может быть отрицательным)
+function getOffsetTime(){
+    const now = new Date();
+    if(timeOffset !== 0) now.setMinutes(now.getMinutes() + timeOffset);
+    return now;
+}
+
+// ===== ИНИЦИАЛИЗАЦИЯ БЛОКА ВРЕМЕНИ =====
+const timeClockEl = document.getElementById("timeClock");
+const timeBadgeEl = document.getElementById("timeBadge");
+const timeNowBtn = document.getElementById("timeNow");
+const customInput = document.getElementById("customOffset");
+const applyCustomBtn = document.getElementById("applyCustom");
+
+function pad(n){ return n.toString().padStart(2, "0"); }
+
+// Обновляет часы и бейдж смещения, перерисовывает превью чека
+function refreshTimeUI(){
+  const t = getOffsetTime();
+  timeClockEl.textContent = `${pad(t.getHours())}:${pad(t.getMinutes())}`;
+
+  if(timeOffset === 0){
+    timeBadgeEl.textContent = "Сейчас";
+    timeNowBtn.classList.add("is-live");
+  } else {
+    const sign = timeOffset > 0 ? "+" : "−";
+    timeBadgeEl.textContent = `${sign}${Math.abs(timeOffset)} мин`;
+    timeNowBtn.classList.remove("is-live");
+  }
+
+  localStorage.setItem("timeOffset", timeOffset);
+  updateReceiptPreview();
+}
+
+function setOffset(newValue){
+  timeOffset = newValue;
+  customInput.value = "";
+  refreshTimeUI();
+  if (navigator.vibrate) navigator.vibrate(15);
+}
+
+// Чипы +5/-5/+15/-15 добавляют смещение к текущему значению
+document.querySelectorAll(".chip[data-delta]").forEach(btn => {
+  btn.addEventListener("click", () => {
+    setOffset(timeOffset + parseInt(btn.dataset.delta, 10));
+  });
+});
+
+// «Сейчас» — сброс смещения в 0
+timeNowBtn.addEventListener("click", () => setOffset(0));
+
+// Ручной ввод точного смещения (можно со знаком минус)
+function applyCustomOffset(){
+  const val = parseInt(customInput.value, 10);
+  setOffset(Number.isFinite(val) ? val : 0);
+}
+applyCustomBtn.addEventListener("click", applyCustomOffset);
+customInput.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") { e.preventDefault(); applyCustomOffset(); }
+});
+
+// Держим часы «живыми», пока открыта страница
+setInterval(refreshTimeUI, 15000);
+
+// Запрет увеличения страницы двойным тапом (iPhone)
+let lastTouchEnd = 0;
+
+document.addEventListener("touchend", function (event) {
+    const now = Date.now();
+
+    // Кнопки, блюда и поля не трогаем — иначе быстрый второй тап
+    // (например, «+5» два раза подряд) терялся. Зум на них и так
+    // отключён через touch-action: manipulation.
+    const interactive = event.target.closest && event.target.closest("button, input, .item, .back");
+
+    if (!interactive && now - lastTouchEnd <= 300) {
+        event.preventDefault();
+    }
+
+    lastTouchEnd = now;
+}, { passive: false });
+
+// ===== Старт =====
+renderPage("Закуски");
+refreshTimeUI(); // выставляет часы и делает первый рендер чека
+    
 </script>
 
 </div>
